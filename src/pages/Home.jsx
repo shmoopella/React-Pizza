@@ -4,68 +4,48 @@ import Categories from "../components/Categories";
 import Sort from "../components/Sort";
 import MySkeleton from "../components/PizzaBlock/Skeleton";
 import PizzaBlock from "../components/PizzaBlock/PizzaBlock";
-// import sort from "../components/Sort";
-
+import Pagination from "../components/Pagination/Pagination";
+import { SearchContext } from "../App";
 function Home() {
   const [pizzas, setPizzas] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  const [activeCategory, setActiveCategory] = React.useState("Все");
-  const [sortName, setSortName] = React.useState("популярности");
-  const [order, setOrder] = React.useState("asc");
+  const [activeCategory, setActiveCategory] = React.useState(0);
+  const [selectedSort, setSortName] = React.useState({
+    name: "популярности",
+    sortValue: "rating",
+    order: "desc",
+  });
+
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const { searchValue } = React.useContext(SearchContext);
   function getPizzas(url) {
+    setIsLoading(true);
     fetch(url)
-      .then((response) => response.json())
+      .then((response) => {
+        return response.ok ? response.json() : [];
+      })
       .then((response) => {
         setPizzas(response);
         setIsLoading(false);
+        console.log("pizzas: ", response);
       });
   }
-  function defineSortOrder() {
-    let sortValue = "";
-    let categoryValue = "";
-    let orderValue = order;
-    switch (sortName) {
-      case "популярности":
-        sortValue = "rating";
-        break;
-      case "цене":
-        sortValue = "price";
-        break;
-      case "алфавиту":
-        sortValue = "title";
-        break;
-      default:
-        sortValue = "";
-    }
-    switch (activeCategory) {
-      case "Мясные":
-        categoryValue = 1;
-        break;
-      case "Вегетарианские":
-        categoryValue = 2;
-        break;
-      case "Острые":
-        categoryValue = 3;
-        break;
-      default:
-        categoryValue = "";
-    }
-    return [sortValue, categoryValue, orderValue];
-  }
-
-  React.useEffect(() => {
-    getPizzas("https://6784503c1ec630ca33a4389a.mockapi.io/pizzas");
-  }, []);
 
   React.useEffect(() => {
     const url = new URL("https://6784503c1ec630ca33a4389a.mockapi.io/pizzas");
-    const [sortValue, categoryValue, orderValue] = defineSortOrder();
-    url.searchParams.append("category", categoryValue);
-    url.searchParams.append("sortBy", sortValue);
-    url.searchParams.append("order", orderValue);
+    url.searchParams.append(
+      "category",
+      activeCategory === 0 ? "" : activeCategory,
+    );
+    url.searchParams.append("sortBy", selectedSort.sortValue);
+    url.searchParams.append("order", selectedSort.order);
+    url.searchParams.append("title", searchValue);
+    url.searchParams.append("limit", 3);
+    url.searchParams.append("page", currentPage);
     getPizzas(url);
-  }, [activeCategory, sortName, order]);
+  }, [activeCategory, selectedSort, searchValue, currentPage]);
 
   return (
     <div className="container">
@@ -74,12 +54,7 @@ function Home() {
           activeCategory={activeCategory}
           setActiveCategory={setActiveCategory}
         />
-        <Sort
-          sortName={sortName}
-          setSortName={setSortName}
-          order={order}
-          setOrder={setOrder}
-        />
+        <Sort selectedSort={selectedSort} setSortName={setSortName} />
       </div>
       <h2 className="content__title">Все пиццы</h2>
       <div className="content__items">
@@ -87,6 +62,7 @@ function Home() {
           ? [...new Array(8)].map((_, index) => <MySkeleton key={index} />)
           : pizzas.map((obj) => <PizzaBlock key={obj.id} {...obj} />)}
       </div>
+      <Pagination pageCount={4} handlePageClick={setCurrentPage} />
     </div>
   );
 }
